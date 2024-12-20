@@ -1,0 +1,375 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}AI Fynance Agent{% endblock %}
+
+{% block stylesheets %}
+<style>
+    .hero-section {
+        padding: 2rem 1rem;
+        background: linear-gradient(90deg, #f3f4f6, #ffffff);
+        border-radius: 0.5rem;
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .hero-section h1 {
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+    .hero-section p {
+        color: #6b7280;
+    }
+    .tab-content {
+        margin-top: 2rem;
+    }
+    .results-section h5 {
+        font-weight: 600;
+        margin-top: 1rem;
+    }
+</style>
+{% endblock stylesheets %}
+
+{% block content %}
+<div class="pcoded-main-container">
+    <div class="pcoded-wrapper">
+        <div class="pcoded-content">
+            <div class="pcoded-inner-content">
+
+                <div class="main-body">
+                    <div class="page-wrapper">
+                        
+                        <!-- Hero Section -->
+                        <div class="hero-section">
+                            <h1>AI Fynance Agent</h1>
+                            <p>Enhance your financial insights with integrated search and analysis. Powered by your documents, web data, and more.</p>
+                        </div>
+                        
+                        <!-- Tabs for Upload & Search -->
+                        <ul class="nav nav-tabs" id="featureTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <a class="nav-link active" id="search-tab" data-toggle="tab" href="#search" role="tab" aria-controls="search" aria-selected="true">Search</a>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <a class="nav-link" id="upload-tab" data-toggle="tab" href="#upload" role="tab" aria-controls="upload" aria-selected="false">Upload File</a>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content" id="featureTabsContent">
+                            <!-- Search Tab Content -->
+                            <div class="tab-pane fade show active" id="search" role="tabpanel" aria-labelledby="search-tab">
+                                <div class="card mt-4">
+                                    <div class="card-body">
+                                        <form id="queryForm" class="w-100 mb-4">
+                                            <div class="form-group">
+                                                <label for="queryInput">Enter your query</label>
+                                                <input 
+                                                    id="queryInput" 
+                                                    type="text" 
+                                                    placeholder="Ask a question or enter a keyword..." 
+                                                    class="form-control" 
+                                                    required
+                                                >
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="source">Select Source</label>
+                                                <select id="source" class="form-control" required>
+                                                    <option value="" disabled selected>Select a source</option>
+                                                    <option value="files">Files</option>
+                                                    <option value="wikipedia">Wikipedia</option>
+                                                    <option value="news">Financial News</option>
+                                                    <option value="stock">Stock Data</option>
+                                                    <option value="duckduckgo">DuckDuckGo</option>
+                                                    <option value="youtube">YouTube</option>
+                                                    <option value="twitter">Twitter</option>
+                                                    <option value="reddit">Reddit</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group d-none" id="tickerGroup">
+                                                <label for="tickerInput">Ticker Symbol (if Stock Data)</label>
+                                                <input 
+                                                    id="tickerInput" 
+                                                    type="text" 
+                                                    placeholder="e.g., AAPL" 
+                                                    class="form-control"
+                                                >
+                                            </div>
+                                            <div class="form-group d-none" id="newsUrlGroup">
+                                                <label for="newsUrlInput">News URL (if Financial News)</label>
+                                                <input 
+                                                    id="newsUrlInput" 
+                                                    type="url" 
+                                                    placeholder="https://example.com/news-article" 
+                                                    class="form-control"
+                                                >
+                                            </div>
+                                            <button type="submit" class="btn btn-primary btn-block mt-3">Search</button>
+                                        </form>
+
+                                        <div id="results" class="results-section">
+                                            <!-- Search results will appear here -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Upload Tab Content -->
+                            <div class="tab-pane fade" id="upload" role="tabpanel" aria-labelledby="upload-tab">
+                                <div class="card mt-4">
+                                    <div class="card-body">
+                                        <form id="fileForm" class="w-100 mb-4" enctype="multipart/form-data">
+                                            <div class="form-group">
+                                                <label for="fileInput">Upload a file for RAG</label>
+                                                <input 
+                                                    id="fileInput" 
+                                                    type="file" 
+                                                    name="file"
+                                                    class="form-control" 
+                                                    accept=".pdf,.txt,.doc,.docx" 
+                                                    required
+                                                >
+                                            </div>
+                                            <button type="submit" class="btn btn-secondary btn-block">Upload File</button>
+                                        </form>
+
+                                        <div id="fileUploadResults" class="mt-4">
+                                            <!-- File upload results will appear here -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- [ Main Content ] end -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- [ Main Content ] end -->
+
+
+<script>
+    // Handle File Upload
+    document.getElementById('fileForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const fileInput = document.getElementById('fileInput');
+        if (!fileInput.files.length) {
+            alert("Please select a file first.");
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        try {
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+            const fileUploadResults = document.getElementById('fileUploadResults');
+            if (response.ok) {
+                fileUploadResults.innerHTML = `
+                    <div class="alert alert-success" role="alert">
+                        ${data.message || 'File uploaded and indexed successfully.'}
+                    </div>
+                `;
+            } else {
+                fileUploadResults.innerHTML = `
+                    <div class="alert alert-danger" role="alert">
+                        ${data.error || 'An error occurred while uploading the file.'}
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error uploading file:', error);
+            const fileUploadResults = document.getElementById('fileUploadResults');
+            fileUploadResults.innerHTML = `
+                <div class="alert alert-danger" role="alert">
+                    An error occurred: ${error.message}
+                </div>
+            `;
+        }
+    });
+
+    // Show/Hide fields based on source selection
+    document.getElementById('source').addEventListener('change', (e) => {
+        const source = e.target.value;
+        const tickerGroup = document.getElementById('tickerGroup');
+        const newsUrlGroup = document.getElementById('newsUrlGroup');
+
+        // Hide all conditional fields initially
+        tickerGroup.classList.add('d-none');
+        newsUrlGroup.classList.add('d-none');
+
+        // Show the relevant field based on selection
+        if (source === 'stock') {
+            tickerGroup.classList.remove('d-none');
+        } else if (source === 'news') {
+            newsUrlGroup.classList.remove('d-none');
+        }
+    });
+
+    // Handle Query Submission
+    document.getElementById('queryForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        // Gather form data
+        const query = document.getElementById('queryInput').value.trim();
+        const source = document.getElementById('source').value;
+        const ticker = document.getElementById('tickerInput').value.trim();
+        const newsUrl = document.getElementById('newsUrlInput').value.trim();
+
+        // Basic validation
+        if (!query || !source) {
+            alert('Please fill in all required fields.');
+            return;
+        }
+
+        if (source === 'stock' && !ticker) {
+            alert('Please enter a ticker symbol for Stock Data.');
+            return;
+        }
+
+        if (source === 'news' && !newsUrl) {
+            alert('Please enter a News URL for Financial News.');
+            return;
+        }
+
+        // Prepare the payload
+        const payload = { query, source };
+        if (source === 'stock') {
+            payload.ticker = ticker;
+        }
+        if (source === 'news') {
+            payload.url = newsUrl;
+        }
+
+        try {
+            // Make the POST request
+            const response = await fetch('/query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server responded with status ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            const resultsDiv = document.getElementById('results');
+            // Start building the results HTML
+            let html = '';
+            if (data.error) {
+                // If error present
+                html = `
+                    <div class="alert alert-danger" role="alert">
+                        ${data.error}
+                    </div>
+                `;
+            } else {
+                // Successful response
+                html = `
+                    <div class="alert alert-success" role="alert">
+                        ${data.response || 'No response found.'}
+                    </div>
+                `;
+
+                // If there is an image URL (duckduckgo)
+                if (data.image) {
+                    html += `
+                        <div class="mt-3">
+                            <h5>Image:</h5>
+                            <img src="${data.image}" alt="DuckDuckGo image" style="max-width: 100%; height: auto;"/>
+                        </div>
+                    `;
+                }
+
+                // If there is a video URL (YouTube)
+                if (data.video_url) {
+                    html += `
+                        <div class="mt-3">
+                            <h5>Video:</h5>
+                            <a href="${data.video_url}" target="_blank">Watch on YouTube</a>
+                        </div>
+                    `;
+                }
+
+                // If there are tweets (Twitter)
+                if (data.tweets && Array.isArray(data.tweets)) {
+                    html += `
+                        <div class="mt-3">
+                            <h5>Tweets:</h5>
+                            <ul>
+                                ${data.tweets.map(tweet => `<li>${tweet}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+
+                // If we have reddit posts
+                if (data.reddit_posts && Array.isArray(data.reddit_posts)) {
+                    html += `
+                        <div class="mt-3">
+                            <h5>Reddit Posts:</h5>
+                            <ul>
+                                ${data.reddit_posts.map(post => `<li><a href="${post.url}" target="_blank">${post.title}</a></li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+
+                // If source documents are available (files)
+                if (data.sources && Array.isArray(data.sources)) {
+                    html += `
+                        <div class="mt-3">
+                            <h5>Source Documents:</h5>
+                            <ul>
+                                ${data.sources.map((src, i) => `<li><pre>${src}</pre></li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+
+                // If Wikipedia title and url
+                if (data.title && data.url) {
+                    html += `
+                        <div class="mt-3">
+                            <h5>Wikipedia Page:</h5>
+                            <p><strong>${data.title}</strong></p>
+                            <p><a href="${data.url}" target="_blank">${data.url}</a></p>
+                        </div>
+                    `;
+                }
+
+                // If we have a snippet from the news
+                if (data.snippet) {
+                    html += `
+                        <div class="mt-3">
+                            <h5>News Snippet:</h5>
+                            <p>${data.snippet}</p>
+                        </div>
+                    `;
+                }
+            }
+
+            resultsDiv.innerHTML = html;
+
+        } catch (error) {
+            // Handle errors
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `
+                <div class="alert alert-danger" role="alert">
+                    An error occurred: ${error.message}
+                </div>
+            `;
+            console.error('Error submitting query:', error);
+        }
+    });
+</script>
+{% endblock content %}
+
+{% block javascripts %}{% endblock javascripts %}

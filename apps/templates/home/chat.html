@@ -1,0 +1,178 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} Chat {% endblock %}
+
+{% block stylesheets %}{% endblock stylesheets %}
+
+{% block content %}
+    <!-- [ Main Content ] start -->
+    <div class="pcoded-main-container">
+        <div class="pcoded-wrapper">
+            <div class="pcoded-content">
+                <div class="pcoded-inner-content">
+                    <!-- [ breadcrumb ] start -->
+                    <!-- [ breadcrumb ] end -->
+                    <div class="main-body">
+                        <div class="page-wrapper">
+                            <!-- [ Main Content ] start -->
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h5>AI Fynance Agent</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <p class="text-muted"></p> <!-- Fixed unclosed <p> tag -->
+
+                                            <form id="queryForm" class="w-100 mb-4">
+                                                <div class="form-group">
+                                                    <label for="queryInput">Enter your query</label>
+                                                    <input 
+                                                        id="queryInput" 
+                                                        type="text" 
+                                                        placeholder="Enter your query..." 
+                                                        class="form-control" 
+                                                        required
+                                                    >
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="source">Select Source</label>
+                                                    <select id="source" class="form-control" required>
+                                                        <option value="" disabled selected>Select a source</option>
+                                                        <option value="files">Files</option>
+                                                        <option value="wikipedia">Wikipedia</option>
+                                                        <option value="news">Financial News</option>
+                                                        <option value="stock">Stock Data</option>
+                                                    </select>
+                                                </div>
+                                                <div class="form-group d-none" id="tickerGroup">
+                                                    <label for="tickerInput">Ticker Symbol (if Stock Data)</label>
+                                                    <input 
+                                                        id="tickerInput" 
+                                                        type="text" 
+                                                        placeholder="Ticker Symbol (e.g., AAPL)" 
+                                                        class="form-control"
+                                                    >
+                                                </div>
+                                                <div class="form-group d-none" id="newsUrlGroup">
+                                                    <label for="newsUrlInput">News URL (if Financial News)</label>
+                                                    <input 
+                                                        id="newsUrlInput" 
+                                                        type="url" 
+                                                        placeholder="https://example.com/news-article" 
+                                                        class="form-control"
+                                                    >
+                                                </div>
+                                                <button type="submit" class="btn btn-primary">Search</button>
+                                            </form>
+
+                                            <!-- Results Section -->
+                                            <div id="results" class="mt-4">
+                                                <!-- Search results will appear here -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- [ Main Content ] end -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- [ Main Content ] end -->
+
+{% endblock content %}
+
+{% block javascripts %}{% endblock javascripts %}
+
+
+
+<script>
+    // Show/Hide fields based on source selection
+    document.getElementById('source').addEventListener('change', (e) => {
+        const source = e.target.value;
+        const tickerGroup = document.getElementById('tickerGroup');
+        const newsUrlGroup = document.getElementById('newsUrlGroup');
+
+        // Hide all conditional fields initially
+        tickerGroup.classList.add('d-none');
+        newsUrlGroup.classList.add('d-none');
+
+        // Show the relevant field based on selection
+        if (source === 'stock') {
+            tickerGroup.classList.remove('d-none');
+        } else if (source === 'news') {
+            newsUrlGroup.classList.remove('d-none');
+        }
+    });
+
+    // Handle Query Submission
+    document.getElementById('queryForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        // Gather form data
+        const query = document.getElementById('queryInput').value.trim();
+        const source = document.getElementById('source').value;
+        const ticker = document.getElementById('tickerInput').value.trim();
+        const newsUrl = document.getElementById('newsUrlInput').value.trim();
+
+        // Basic validation
+        if (!query || !source) {
+            alert('Please fill in all required fields.');
+            return;
+        }
+
+        if (source === 'stock' && !ticker) {
+            alert('Please enter a ticker symbol for Stock Data.');
+            return;
+        }
+
+        if (source === 'news' && !newsUrl) {
+            alert('Please enter a News URL for Financial News.');
+            return;
+        }
+
+        // Prepare the payload
+        const payload = { query, source };
+        if (source === 'stock') {
+            payload.ticker = ticker;
+        }
+        if (source === 'news') {
+            payload.url = newsUrl;
+        }
+
+        try {
+            // Make the POST request
+            const response = await fetch('/query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server responded with status ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            // Display the results
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `
+                <div class="alert alert-${data.error ? 'danger' : 'success'}" role="alert">
+                    ${data.response || data.error}
+                </div>
+            `;
+        } catch (error) {
+            // Handle errors
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `
+                <div class="alert alert-danger" role="alert">
+                    An error occurred: ${error.message}
+                </div>
+            `;
+            console.error('Error submitting query:', error);
+        }
+    });
+</script>
