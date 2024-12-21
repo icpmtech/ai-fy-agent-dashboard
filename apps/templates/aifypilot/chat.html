@@ -66,6 +66,8 @@
     .chat-message.user {
         justify-content: flex-end;
     }
+
+    /* Message bubbles */
     .chat-message p {
         background: #e5e7eb;
         padding: 0.75rem 1rem;
@@ -73,10 +75,64 @@
         max-width: 70%;
         white-space: pre-wrap;
         word-wrap: break-word;
+        display: inline-block;
+        margin: 0;
     }
     .chat-message.user p {
         background: #2563eb;
         color: white;
+    }
+
+    /* Assistant styling with icon */
+    .assistant-icon {
+        margin-right: 0.5rem;
+        color: #2563eb;
+        font-size: 1.2rem;
+    }
+
+    /* Typewriter effect */
+    @keyframes typewriter {
+        from { width: 0; }
+        to   { width: 100%; }
+    }
+    .typewriter {
+        display: inline-block;
+        border-right: 2px solid rgba(0,0,0,.75);
+        white-space: nowrap; 
+        overflow: hidden; 
+        animation: typing 2s steps(40, end), blink-caret 0.75s step-end infinite;
+    }
+    @keyframes typing {
+        from { width: 0 }
+        to   { width: 100% }
+    }
+    @keyframes blink-caret {
+        50% { border-color: transparent; }
+    }
+
+    /* Bouncing dots (typing indicator) */
+    .typing-indicator {
+        display: inline-block;
+        margin-left: 0.5rem;
+    }
+    .dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        margin: 0 2px;
+        border-radius: 50%;
+        background-color: #6b7280;
+        animation: bounce 1s infinite;
+    }
+    .dot:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+    .dot:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+    @keyframes bounce {
+        0%, 80%, 100% { transform: scale(1); }
+        40% { transform: scale(1.5); }
     }
 
     /* Form elements */
@@ -212,6 +268,10 @@
         line-height: 1.2;
     }
 </style>
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+/>
 {% endblock stylesheets %}
 
 {% block content %}
@@ -424,13 +484,62 @@
         });
     });
 
+    /**
+     * Animate text with a typewriter effect inside a given element.
+     * @param {HTMLElement} element - The element where the text will be typed.
+     * @param {string} text - The full text to type out.
+     * @param {number} index - The current character index.
+     * @param {number} speed - Typing speed in milliseconds.
+     */
+    function typeWriterEffect(element, text, index = 0, speed = 30) {
+        if (index < text.length) {
+            element.textContent += text.charAt(index);
+            setTimeout(() => typeWriterEffect(element, text, index + 1, speed), speed);
+        }
+    }
+
     // Append messages to chat
-    function appendMessage(content, user = false) {
+    // If "assistantTyping" is true, show bouncing dots while we type
+    function appendAssistantMessage(text, assistantTyping = false) {
         const msgDiv = document.createElement('div');
-        msgDiv.classList.add('chat-message', user ? 'user' : 'assistant');
+        msgDiv.classList.add('chat-message', 'assistant');
+
+        // Add system icon + placeholder for typed text
+        msgDiv.innerHTML = `
+            <p>
+                <i class="fas fa-robot assistant-icon"></i>
+                <span class="typing-target"></span>
+                ${assistantTyping ? `
+                    <span class="typing-indicator">
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                    </span>
+                ` : ''}
+            </p>
+        `;
+        chatMessages.appendChild(msgDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        return msgDiv.querySelector('.typing-target');
+    }
+
+    // Append user messages normally
+    function appendMessage(content, user = false) {
+        // If it's assistant, use the specialized function:
+        if (!user) {
+            // During "processing...", we show bouncing dots until we replace it
+            const typedElement = appendAssistantMessage(content, true);
+            // We'll set the typed text later (when final text is known)
+            return typedElement;
+        }
+
+        // Otherwise, it's user content
+        const msgDiv = document.createElement('div');
+        msgDiv.classList.add('chat-message', 'user');
         msgDiv.innerHTML = `<p>${content}</p>`;
         chatMessages.appendChild(msgDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
+        return msgDiv;
     }
 
     // ==================== FILE UPLOAD LOGIC ====================
@@ -524,11 +633,12 @@
             return;
         }
 
+        // Append user message
         appendMessage(`Q: ${query}\nSource: ${source}${ticker ? `\nTicker: ${ticker}` : ''}${newsUrl ? `\nURL: ${newsUrl}` : ''}`, true);
         queryInput.value = '';
 
-        // Show "Processing..." in the chat
-        appendMessage('Processing...');
+        // Show "Processing..." with bouncing dots
+        const assistantPlaceholder = appendMessage('Processing...');
         showLoader();
         logDebug(`Sending query: "${query}" to source: ${source}`);
 
@@ -549,71 +659,60 @@
             const data = await response.json();
             hideLoader();
 
-            // Replace the "Processing..." message with the actual response
-            chatMessages.lastElementChild.innerHTML = `
-                <p>
-                    ${data.error ? 
-                        `<div class="alert alert-danger" role="alert">${data.error}</div>` 
-                        : 
-                        `<div class="alert alert-success" role="alert">${data.response || 'No response found.'}</div>`
-                    }
-
-                    ${data.image ? `
-                    <div class="mt-3">
-                        <h5>Image:</h5>
-                        <img src="${data.image}" alt="DuckDuckGo image" style="max-width: 100%; height: auto;"/>
-                    </div>` : ''}
-
-                    ${data.video_url ? `
-                    <div class="mt-3">
-                        <h5>Video:</h5>
-                        <a href="${data.video_url}" target="_blank">Watch on YouTube</a>
-                    </div>` : ''}
-
-                    ${data.tweets && Array.isArray(data.tweets) && data.tweets.length > 0 ? `
-                    <div class="mt-3">
-                        <h5>Tweets:</h5>
-                        <ul>${data.tweets.map(tweet => `<li>${tweet}</li>`).join('')}</ul>
-                    </div>` : ''}
-
-                    ${data.reddit_posts && Array.isArray(data.reddit_posts) && data.reddit_posts.length > 0 ? `
-                    <div class="mt-3">
-                        <h5>Reddit Posts:</h5>
-                        <ul>${data.reddit_posts.map(post => `<li><a href="${post.url}" target="_blank">${post.title}</a></li>`).join('')}</ul>
-                    </div>` : ''}
-
-                    ${data.sources && Array.isArray(data.sources) && data.sources.length > 0 ? `
-                    <div class="mt-3">
-                        <h5>Source Documents:</h5>
-                        <ul>${data.sources.map(src => `<li><pre>${src}</pre></li>`).join('')}</ul>
-                    </div>` : ''}
-
-                    ${data.title && data.url ? `
-                    <div class="mt-3">
-                        <h5>Wikipedia Page:</h5>
-                        <p><strong>${data.title}</strong></p>
-                        <p><a href="${data.url}" target="_blank">${data.url}</a></p>
-                    </div>` : ''}
-
-                    ${data.snippet ? `
-                    <div class="mt-3">
-                        <h5>News Snippet:</h5>
-                        <p>${data.snippet}</p>
-                    </div>` : ''}
-                </p>
-            `;
+            // Now we have the final response, let's "type" it out
             logDebug(`Query response received for: "${query}"`);
+            
+            // Build the final HTML string to type
+            let typedText = '';
+            if (data.error) {
+                typedText += `[ERROR]: ${data.error}\n`;
+            } else {
+                typedText += (data.response || 'No response found.') + '\n';
+
+                if (data.image) {
+                    typedText += `\n[Image: ${data.image}]`;
+                }
+                if (data.video_url) {
+                    typedText += `\n[Video: ${data.video_url}]`;
+                }
+                if (data.tweets && Array.isArray(data.tweets) && data.tweets.length > 0) {
+                    typedText += `\n[Some Tweets Found]\n`;
+                    data.tweets.forEach((tweet, i) => {
+                        typedText += ` - ${tweet}\n`;
+                    });
+                }
+                if (data.reddit_posts && Array.isArray(data.reddit_posts) && data.reddit_posts.length > 0) {
+                    typedText += `\n[Reddit Posts]\n`;
+                    data.reddit_posts.forEach(post => {
+                        typedText += ` - ${post.title} (${post.url})\n`;
+                    });
+                }
+                if (data.sources && Array.isArray(data.sources) && data.sources.length > 0) {
+                    typedText += `\n[Source Documents]\n`;
+                    data.sources.forEach(src => {
+                        typedText += ` - ${src}\n`;
+                    });
+                }
+                if (data.title && data.url) {
+                    typedText += `\n[Wikipedia Page]\nTitle: ${data.title}\nURL: ${data.url}\n`;
+                }
+                if (data.snippet) {
+                    typedText += `\n[News Snippet]\n${data.snippet}\n`;
+                }
+            }
+
+            // Clear the old "Processing..." + dots from placeholder
+            assistantPlaceholder.parentElement.querySelector('.typing-indicator')?.remove();
+            assistantPlaceholder.textContent = '';
+
+            // Animate the final text with typewriter effect
+            typeWriterEffect(assistantPlaceholder, typedText);
         } catch (error) {
             hideLoader();
-            chatMessages.lastElementChild.innerHTML = `
-                <p>
-                    <div class="alert alert-danger" role="alert">
-                        An error occurred: ${error.message}
-                    </div>
-                </p>
-            `;
             logDebug(`Query error: ${error.message}`);
             console.error('Error submitting query:', error);
+            assistantPlaceholder.parentElement.querySelector('.typing-indicator')?.remove();
+            assistantPlaceholder.textContent = `[ERROR]: ${error.message}`;
         }
     });
 </script>
