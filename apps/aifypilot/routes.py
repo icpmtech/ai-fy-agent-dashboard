@@ -287,4 +287,4 @@ def query_endpoint():
 
 @blueprint.route("/chat")
 def chat():
-    return render_template("aifypilot/chat.html")
+    return render_template("aifypilot/chat.html",segment='chat')

@@ -4,31 +4,231 @@
 
 {% block stylesheets %}
 <style>
+    /* Basic styling and layout */
     .hero-section {
         padding: 2rem 1rem;
-        background: linear-gradient(90deg, #f3f4f6, #ffffff);
+        background: linear-gradient(90deg, #3b82f6, #93c5fd);
         border-radius: 0.5rem;
         text-align: center;
+        color: #ffffff;
         margin-bottom: 2rem;
     }
     .hero-section h1 {
-        font-weight: 600;
+        font-weight: 700;
         margin-bottom: 1rem;
     }
     .hero-section p {
-        color: #6b7280;
+        color: #e0f2fe;
+    }
+
+    .nav-tabs {
+        justify-content: center;
+        margin-bottom: 1.5rem;
+    }
+    .nav-tabs .nav-item {
+        margin: 0 0.5rem;
     }
     .tab-content {
-        margin-top: 2rem;
+        padding: 1.5rem;
+        background: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
-    .results-section h5 {
+
+    /* Chat container */
+    .chat-container {
+        display: flex;
+        flex-direction: column;
+        height: 500px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .chat-messages {
+        flex: 1;
+        padding: 1rem;
+        overflow-y: auto;
+        background: #f3f4f6;
+    }
+    .chat-input-bar {
+        background: #fff;
+        padding: 1rem;
+        border-top: 1px solid #ddd;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    .chat-message {
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: flex-start;
+    }
+    .chat-message.user {
+        justify-content: flex-end;
+    }
+    .chat-message p {
+        background: #e5e7eb;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        max-width: 70%;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    .chat-message.user p {
+        background: #2563eb;
+        color: white;
+    }
+
+    /* Form elements */
+    .form-control, .btn {
+        border-radius: 8px;
+    }
+    .form-group label {
         font-weight: 600;
+    }
+    .alert {
         margin-top: 1rem;
+    }
+    .mt-3 {
+        margin-top: 1rem !important;
+    }
+    pre {
+        background: #f3f4f6;
+        padding: 0.5rem;
+        border-radius: 8px;
+    }
+
+    /* Source Selection (Radio Buttons as Toggle) */
+    .source-options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .source-option {
+        position: relative;
+    }
+    .source-option input[type="radio"] {
+        position: absolute;
+        opacity: 0;
+        cursor: pointer;
+    }
+    .source-option label {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        background: #e5e7eb;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.3s;
+        font-size: 0.9rem;
+    }
+    .source-option label:hover {
+        background: #d1d5db;
+    }
+    .source-option input[type="radio"]:checked + label {
+        background: #2563eb;
+        color: #fff;
+    }
+
+    /* Drag and Drop Upload */
+    .upload-drop-zone {
+        border: 2px dashed #cbd5e1;
+        border-radius: 8px;
+        padding: 2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.3s;
+        color: #6b7280;
+    }
+    .upload-drop-zone:hover {
+        border-color: #93c5fd;
+    }
+    .upload-drop-zone input[type="file"] {
+        display: none;
+    }
+    .upload-drop-zone.drag-over {
+        border-color: #3b82f6;
+        background: #eff6ff;
+    }
+
+    /* Loading Overlay & Spinner */
+    .loader-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(255, 255, 255, 0.8);
+        display: none; /* Hidden by default */
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+    .loader {
+        border: 8px solid #f3f3f3;
+        border-top: 8px solid #3498db;
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Debug Panel */
+    #debugToggleBtn {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        border-radius: 8px;
+        z-index: 99999;
+        background-color: #2563eb;
+        color: #fff;
+        border: none;
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+    }
+    #debugPanel {
+        position: fixed;
+        bottom: 70px;
+        right: 20px;
+        width: 300px;
+        max-height: 250px;
+        overflow-y: auto;
+        background: #fff;
+        border: 1px solid #ddd;
+        padding: 1rem;
+        border-radius: 8px;
+        z-index: 99999;
+        display: none; /* Hidden by default */
+    }
+    #debugPanel h5 {
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+    }
+    #debugContent {
+        font-size: 0.9rem;
+        line-height: 1.2;
     }
 </style>
 {% endblock stylesheets %}
 
 {% block content %}
+<!-- Loading Overlay -->
+<div class="loader-overlay" id="loaderOverlay">
+    <div class="loader"></div>
+</div>
+
+<!-- Debug Toggle Button -->
+<button id="debugToggleBtn">Show Debug</button>
+
+<!-- Debug Panel -->
+<div id="debugPanel">
+    <h5>Debug Logs</h5>
+    <div id="debugContent"></div>
+</div>
+
 <div class="pcoded-main-container">
     <div class="pcoded-wrapper">
         <div class="pcoded-content">
@@ -56,32 +256,58 @@
                         <div class="tab-content" id="featureTabsContent">
                             <!-- Search Tab Content -->
                             <div class="tab-pane fade show active" id="search" role="tabpanel" aria-labelledby="search-tab">
-                                <div class="card mt-4">
-                                    <div class="card-body">
-                                        <form id="queryForm" class="w-100 mb-4">
+                                <div class="chat-container">
+                                    <div class="chat-messages" id="chatMessages">
+                                        <!-- Messages will appear here dynamically -->
+                                    </div>
+                                    <div class="chat-input-bar">
+                                        <form id="queryForm" class="w-100">
                                             <div class="form-group">
                                                 <label for="queryInput">Enter your query</label>
                                                 <input 
-                                                    id="queryInput" 
+                                                    id="queryInput"
                                                     type="text" 
                                                     placeholder="Ask a question or enter a keyword..." 
-                                                    class="form-control" 
+                                                    class="form-control"
                                                     required
                                                 >
                                             </div>
                                             <div class="form-group">
-                                                <label for="source">Select Source</label>
-                                                <select id="source" class="form-control" required>
-                                                    <option value="" disabled selected>Select a source</option>
-                                                    <option value="files">Files</option>
-                                                    <option value="wikipedia">Wikipedia</option>
-                                                    <option value="news">Financial News</option>
-                                                    <option value="stock">Stock Data</option>
-                                                    <option value="duckduckgo">DuckDuckGo</option>
-                                                    <option value="youtube">YouTube</option>
-                                                    <option value="twitter">Twitter</option>
-                                                    <option value="reddit">Reddit</option>
-                                                </select>
+                                                <label>Select Source</label>
+                                                <div class="source-options">
+                                                    <div class="source-option">
+                                                        <input type="radio" id="src-files" name="source" value="files" required>
+                                                        <label for="src-files">Files</label>
+                                                    </div>
+                                                    <div class="source-option">
+                                                        <input type="radio" id="src-wiki" name="source" value="wikipedia">
+                                                        <label for="src-wiki">Wikipedia</label>
+                                                    </div>
+                                                    <div class="source-option">
+                                                        <input type="radio" id="src-news" name="source" value="news">
+                                                        <label for="src-news">Financial News</label>
+                                                    </div>
+                                                    <div class="source-option">
+                                                        <input type="radio" id="src-stock" name="source" value="stock">
+                                                        <label for="src-stock">Stock Data</label>
+                                                    </div>
+                                                    <div class="source-option">
+                                                        <input type="radio" id="src-duck" name="source" value="duckduckgo">
+                                                        <label for="src-duck">DuckDuckGo</label>
+                                                    </div>
+                                                    <div class="source-option">
+                                                        <input type="radio" id="src-yt" name="source" value="youtube">
+                                                        <label for="src-yt">YouTube</label>
+                                                    </div>
+                                                    <div class="source-option">
+                                                        <input type="radio" id="src-twitter" name="source" value="twitter">
+                                                        <label for="src-twitter">Twitter</label>
+                                                    </div>
+                                                    <div class="source-option">
+                                                        <input type="radio" id="src-reddit" name="source" value="reddit">
+                                                        <label for="src-reddit">Reddit</label>
+                                                    </div>
+                                                </div>
                                             </div>
                                             <div class="form-group d-none" id="tickerGroup">
                                                 <label for="tickerInput">Ticker Symbol (if Stock Data)</label>
@@ -101,12 +327,8 @@
                                                     class="form-control"
                                                 >
                                             </div>
-                                            <button type="submit" class="btn btn-primary btn-block mt-3">Search</button>
+                                            <button type="submit" class="btn btn-primary btn-block mt-3">Send</button>
                                         </form>
-
-                                        <div id="results" class="results-section">
-                                            <!-- Search results will appear here -->
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -115,20 +337,17 @@
                             <div class="tab-pane fade" id="upload" role="tabpanel" aria-labelledby="upload-tab">
                                 <div class="card mt-4">
                                     <div class="card-body">
-                                        <form id="fileForm" class="w-100 mb-4" enctype="multipart/form-data">
-                                            <div class="form-group">
-                                                <label for="fileInput">Upload a file for RAG</label>
-                                                <input 
-                                                    id="fileInput" 
-                                                    type="file" 
-                                                    name="file"
-                                                    class="form-control" 
-                                                    accept=".pdf,.txt,.doc,.docx" 
-                                                    required
-                                                >
-                                            </div>
-                                            <button type="submit" class="btn btn-secondary btn-block">Upload File</button>
-                                        </form>
+                                        <div id="dropZone" class="upload-drop-zone">
+                                            <p>Drag & drop your file here or <span style="text-decoration:underline;cursor:pointer;">browse</span></p>
+                                            <input 
+                                                id="fileInput" 
+                                                type="file" 
+                                                name="file"
+                                                accept=".pdf,.txt,.doc,.docx" 
+                                                required
+                                            >
+                                        </div>
+                                        <button id="uploadBtn" class="btn btn-secondary btn-block mt-3">Upload File</button>
 
                                         <div id="fileUploadResults" class="mt-4">
                                             <!-- File upload results will appear here -->
@@ -146,18 +365,101 @@
 </div>
 <!-- [ Main Content ] end -->
 
-
 <script>
-    // Handle File Upload
-    document.getElementById('fileForm').addEventListener('submit', async (e) => {
+    // ==================== DEBUG PANEL HANDLERS ====================
+    const debugToggleBtn = document.getElementById('debugToggleBtn');
+    const debugPanel = document.getElementById('debugPanel');
+    const debugContent = document.getElementById('debugContent');
+
+    debugToggleBtn.addEventListener('click', () => {
+        // Toggle debug panel visibility
+        if (debugPanel.style.display === 'none' || !debugPanel.style.display) {
+            debugPanel.style.display = 'block';
+            debugToggleBtn.textContent = 'Hide Debug';
+        } else {
+            debugPanel.style.display = 'none';
+            debugToggleBtn.textContent = 'Show Debug';
+        }
+    });
+
+    function logDebug(message) {
+        const timestamp = new Date().toLocaleTimeString();
+        debugContent.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+    }
+
+    // ==================== LOADING OVERLAY HANDLERS ====================
+    const loaderOverlay = document.getElementById('loaderOverlay');
+    function showLoader() {
+        loaderOverlay.style.display = 'flex';
+    }
+    function hideLoader() {
+        loaderOverlay.style.display = 'none';
+    }
+
+    // ==================== MAIN SCRIPT ====================
+    const chatMessages = document.getElementById('chatMessages');
+    const queryForm = document.getElementById('queryForm');
+    const queryInput = document.getElementById('queryInput');
+    const tickerGroup = document.getElementById('tickerGroup');
+    const newsUrlGroup = document.getElementById('newsUrlGroup');
+    const tickerInput = document.getElementById('tickerInput');
+    const newsUrlInput = document.getElementById('newsUrlInput');
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+
+    // Handle source selection UI
+    const sourceRadios = document.querySelectorAll('input[name="source"]');
+    sourceRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            const source = e.target.value;
+            tickerGroup.classList.add('d-none');
+            newsUrlGroup.classList.add('d-none');
+            if (source === 'stock') {
+                tickerGroup.classList.remove('d-none');
+            } else if (source === 'news') {
+                newsUrlGroup.classList.remove('d-none');
+            }
+            logDebug(`Source changed to: ${source}`);
+        });
+    });
+
+    // Append messages to chat
+    function appendMessage(content, user = false) {
+        const msgDiv = document.createElement('div');
+        msgDiv.classList.add('chat-message', user ? 'user' : 'assistant');
+        msgDiv.innerHTML = `<p>${content}</p>`;
+        chatMessages.appendChild(msgDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // ==================== FILE UPLOAD LOGIC ====================
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
-        
-        const fileInput = document.getElementById('fileInput');
+        dropZone.classList.add('drag-over');
+    });
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('drag-over');
+    });
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        if (e.dataTransfer.files.length) {
+            fileInput.files = e.dataTransfer.files;
+            logDebug('File dropped into upload zone.');
+        }
+    });
+
+    uploadBtn.addEventListener('click', async () => {
         if (!fileInput.files.length) {
             alert("Please select a file first.");
+            logDebug('No file selected for upload.');
             return;
         }
-        
+        showLoader();
+        logDebug(`Uploading file: ${fileInput.files[0].name}`);
+
         const formData = new FormData();
         formData.append('file', fileInput.files[0]);
 
@@ -166,8 +468,9 @@
                 method: 'POST',
                 body: formData
             });
-
             const data = await response.json();
+            hideLoader();
+
             const fileUploadResults = document.getElementById('fileUploadResults');
             if (response.ok) {
                 fileUploadResults.innerHTML = `
@@ -175,14 +478,18 @@
                         ${data.message || 'File uploaded and indexed successfully.'}
                     </div>
                 `;
+                logDebug(`File uploaded successfully: ${fileInput.files[0].name}`);
             } else {
                 fileUploadResults.innerHTML = `
                     <div class="alert alert-danger" role="alert">
                         ${data.error || 'An error occurred while uploading the file.'}
                     </div>
                 `;
+                logDebug(`File upload error: ${data.error || 'Unknown error'}`);
             }
         } catch (error) {
+            hideLoader();
+            logDebug(`Error uploading file: ${error.message}`);
             console.error('Error uploading file:', error);
             const fileUploadResults = document.getElementById('fileUploadResults');
             fileUploadResults.innerHTML = `
@@ -193,179 +500,119 @@
         }
     });
 
-    // Show/Hide fields based on source selection
-    document.getElementById('source').addEventListener('change', (e) => {
-        const source = e.target.value;
-        const tickerGroup = document.getElementById('tickerGroup');
-        const newsUrlGroup = document.getElementById('newsUrlGroup');
-
-        // Hide all conditional fields initially
-        tickerGroup.classList.add('d-none');
-        newsUrlGroup.classList.add('d-none');
-
-        // Show the relevant field based on selection
-        if (source === 'stock') {
-            tickerGroup.classList.remove('d-none');
-        } else if (source === 'news') {
-            newsUrlGroup.classList.remove('d-none');
-        }
-    });
-
-    // Handle Query Submission
-    document.getElementById('queryForm').addEventListener('submit', async (e) => {
+    // ==================== QUERY SUBMISSION LOGIC ====================
+    queryForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        const query = queryInput.value.trim();
+        const source = document.querySelector('input[name="source"]:checked')?.value;
+        const ticker = tickerInput.value.trim();
+        const newsUrl = newsUrlInput.value.trim();
 
-        // Gather form data
-        const query = document.getElementById('queryInput').value.trim();
-        const source = document.getElementById('source').value;
-        const ticker = document.getElementById('tickerInput').value.trim();
-        const newsUrl = document.getElementById('newsUrlInput').value.trim();
-
-        // Basic validation
         if (!query || !source) {
             alert('Please fill in all required fields.');
+            logDebug('Query or source missing.');
             return;
         }
-
         if (source === 'stock' && !ticker) {
             alert('Please enter a ticker symbol for Stock Data.');
+            logDebug('Ticker symbol missing for stock data.');
             return;
         }
-
         if (source === 'news' && !newsUrl) {
             alert('Please enter a News URL for Financial News.');
+            logDebug('News URL missing for financial news.');
             return;
         }
 
-        // Prepare the payload
+        appendMessage(`Q: ${query}\nSource: ${source}${ticker ? `\nTicker: ${ticker}` : ''}${newsUrl ? `\nURL: ${newsUrl}` : ''}`, true);
+        queryInput.value = '';
+
+        // Show "Processing..." in the chat
+        appendMessage('Processing...');
+        showLoader();
+        logDebug(`Sending query: "${query}" to source: ${source}`);
+
+        // Prepare payload
         const payload = { query, source };
-        if (source === 'stock') {
-            payload.ticker = ticker;
-        }
-        if (source === 'news') {
-            payload.url = newsUrl;
-        }
+        if (source === 'stock') payload.ticker = ticker;
+        if (source === 'news') payload.url = newsUrl;
 
         try {
-            // Make the POST request
             const response = await fetch('/query', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-
             if (!response.ok) {
                 throw new Error(`Server responded with status ${response.status}`);
             }
-
             const data = await response.json();
+            hideLoader();
 
-            const resultsDiv = document.getElementById('results');
-            // Start building the results HTML
-            let html = '';
-            if (data.error) {
-                // If error present
-                html = `
-                    <div class="alert alert-danger" role="alert">
-                        ${data.error}
-                    </div>
-                `;
-            } else {
-                // Successful response
-                html = `
-                    <div class="alert alert-success" role="alert">
-                        ${data.response || 'No response found.'}
-                    </div>
-                `;
+            // Replace the "Processing..." message with the actual response
+            chatMessages.lastElementChild.innerHTML = `
+                <p>
+                    ${data.error ? 
+                        `<div class="alert alert-danger" role="alert">${data.error}</div>` 
+                        : 
+                        `<div class="alert alert-success" role="alert">${data.response || 'No response found.'}</div>`
+                    }
 
-                // If there is an image URL (duckduckgo)
-                if (data.image) {
-                    html += `
-                        <div class="mt-3">
-                            <h5>Image:</h5>
-                            <img src="${data.image}" alt="DuckDuckGo image" style="max-width: 100%; height: auto;"/>
-                        </div>
-                    `;
-                }
+                    ${data.image ? `
+                    <div class="mt-3">
+                        <h5>Image:</h5>
+                        <img src="${data.image}" alt="DuckDuckGo image" style="max-width: 100%; height: auto;"/>
+                    </div>` : ''}
 
-                // If there is a video URL (YouTube)
-                if (data.video_url) {
-                    html += `
-                        <div class="mt-3">
-                            <h5>Video:</h5>
-                            <a href="${data.video_url}" target="_blank">Watch on YouTube</a>
-                        </div>
-                    `;
-                }
+                    ${data.video_url ? `
+                    <div class="mt-3">
+                        <h5>Video:</h5>
+                        <a href="${data.video_url}" target="_blank">Watch on YouTube</a>
+                    </div>` : ''}
 
-                // If there are tweets (Twitter)
-                if (data.tweets && Array.isArray(data.tweets)) {
-                    html += `
-                        <div class="mt-3">
-                            <h5>Tweets:</h5>
-                            <ul>
-                                ${data.tweets.map(tweet => `<li>${tweet}</li>`).join('')}
-                            </ul>
-                        </div>
-                    `;
-                }
+                    ${data.tweets && Array.isArray(data.tweets) && data.tweets.length > 0 ? `
+                    <div class="mt-3">
+                        <h5>Tweets:</h5>
+                        <ul>${data.tweets.map(tweet => `<li>${tweet}</li>`).join('')}</ul>
+                    </div>` : ''}
 
-                // If we have reddit posts
-                if (data.reddit_posts && Array.isArray(data.reddit_posts)) {
-                    html += `
-                        <div class="mt-3">
-                            <h5>Reddit Posts:</h5>
-                            <ul>
-                                ${data.reddit_posts.map(post => `<li><a href="${post.url}" target="_blank">${post.title}</a></li>`).join('')}
-                            </ul>
-                        </div>
-                    `;
-                }
+                    ${data.reddit_posts && Array.isArray(data.reddit_posts) && data.reddit_posts.length > 0 ? `
+                    <div class="mt-3">
+                        <h5>Reddit Posts:</h5>
+                        <ul>${data.reddit_posts.map(post => `<li><a href="${post.url}" target="_blank">${post.title}</a></li>`).join('')}</ul>
+                    </div>` : ''}
 
-                // If source documents are available (files)
-                if (data.sources && Array.isArray(data.sources)) {
-                    html += `
-                        <div class="mt-3">
-                            <h5>Source Documents:</h5>
-                            <ul>
-                                ${data.sources.map((src, i) => `<li><pre>${src}</pre></li>`).join('')}
-                            </ul>
-                        </div>
-                    `;
-                }
+                    ${data.sources && Array.isArray(data.sources) && data.sources.length > 0 ? `
+                    <div class="mt-3">
+                        <h5>Source Documents:</h5>
+                        <ul>${data.sources.map(src => `<li><pre>${src}</pre></li>`).join('')}</ul>
+                    </div>` : ''}
 
-                // If Wikipedia title and url
-                if (data.title && data.url) {
-                    html += `
-                        <div class="mt-3">
-                            <h5>Wikipedia Page:</h5>
-                            <p><strong>${data.title}</strong></p>
-                            <p><a href="${data.url}" target="_blank">${data.url}</a></p>
-                        </div>
-                    `;
-                }
+                    ${data.title && data.url ? `
+                    <div class="mt-3">
+                        <h5>Wikipedia Page:</h5>
+                        <p><strong>${data.title}</strong></p>
+                        <p><a href="${data.url}" target="_blank">${data.url}</a></p>
+                    </div>` : ''}
 
-                // If we have a snippet from the news
-                if (data.snippet) {
-                    html += `
-                        <div class="mt-3">
-                            <h5>News Snippet:</h5>
-                            <p>${data.snippet}</p>
-                        </div>
-                    `;
-                }
-            }
-
-            resultsDiv.innerHTML = html;
-
-        } catch (error) {
-            // Handle errors
-            const resultsDiv = document.getElementById('results');
-            resultsDiv.innerHTML = `
-                <div class="alert alert-danger" role="alert">
-                    An error occurred: ${error.message}
-                </div>
+                    ${data.snippet ? `
+                    <div class="mt-3">
+                        <h5>News Snippet:</h5>
+                        <p>${data.snippet}</p>
+                    </div>` : ''}
+                </p>
             `;
+            logDebug(`Query response received for: "${query}"`);
+        } catch (error) {
+            hideLoader();
+            chatMessages.lastElementChild.innerHTML = `
+                <p>
+                    <div class="alert alert-danger" role="alert">
+                        An error occurred: ${error.message}
+                    </div>
+                </p>
+            `;
+            logDebug(`Query error: ${error.message}`);
             console.error('Error submitting query:', error);
         }
     });
