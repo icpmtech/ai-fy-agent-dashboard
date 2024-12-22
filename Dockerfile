@@ -5,7 +5,7 @@ ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 ENV FLASK_APP run.py
 ENV DEBUG True
-
+ENV OPENAI_API_KEY=""
 COPY requirements.txt .
 
 # install python dependencies
